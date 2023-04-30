@@ -59,11 +59,30 @@ ckpt = "models/ldm/stable-diffusion-v1/model.ckpt"
 parser = argparse.ArgumentParser()
 
 parser.add_argument(
-    "--prompt", type=str, nargs="?", default="a painting of a virus monster playing guitar", help="the prompt to render"
+    "--prompt",
+    type=str,
+    nargs="?",
+    default="a painting of a virus monster playing guitar",
+    help="the prompt to render"
 )
-parser.add_argument("--outdir", type=str, nargs="?", help="dir to write results to", default="outputs/img2img-samples")
-parser.add_argument("--init-img", type=str, nargs="?", help="path to the input image")
-
+parser.add_argument(
+    "--nprompt",
+    type=str,
+    default="",
+    help="negative prompt to render"
+)
+parser.add_argument(
+    "--outdir", 
+    type=str,
+    nargs="?",
+    help="dir to write results to",
+    default="outputs/img2img-samples"
+)
+parser.add_argument("--init-img",
+    type=str,
+    nargs="?",
+    help="path to the input image"
+)
 parser.add_argument(
     "--skip_grid",
     action="store_true",
@@ -130,11 +149,15 @@ parser.add_argument(
     help="unconditional guidance scale: eps = eps(x, empty) + scale * (eps(x, cond) - eps(x, empty))",
 )
 parser.add_argument(
-    "--from-file",
+    "--prompt-file",
     type=str,
     help="if specified, load prompts from this file",
 )
 parser.add_argument(
+    "--nprompt-file",
+    type=str,
+    help="if specified, load prompts from this file",
+)parser.add_argument(
     "--seed",
     type=int,
     default=None,
@@ -235,17 +258,30 @@ if opt.device != "cpu" and opt.precision == "autocast":
 
 batch_size = opt.n_samples
 n_rows = opt.n_rows if opt.n_rows > 0 else batch_size
-if not opt.from_file:
+if not opt.prompt_file:
     assert opt.prompt is not None
     prompt = opt.prompt
     data = [batch_size * [prompt]]
 
 else:
     print(f"reading prompts from {opt.from_file}")
-    with open(opt.from_file, "r") as f:
+    with open(opt.prompt_file, "r") as f:
         data = f.read().splitlines()
         data = batch_size * list(data)
         data = list(chunk(sorted(data), batch_size))
+
+if not opt.nprompt_file:
+    assert opt.nprompt is not None
+    nprompt = opt.nprompt
+    print(f"Using nprompt: {nprompt}")
+
+else:
+    print(f"reading prompts from {opt.nprompt_file}")
+    with open(opt.nprompt_file, "r") as f:
+        text = f.read()
+        print(f"Using nprompt: {text.strip()}")
+        nprompt = text
+
 
 modelFS.to(opt.device)
 

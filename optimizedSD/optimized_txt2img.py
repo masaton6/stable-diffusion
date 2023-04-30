@@ -142,7 +142,12 @@ parser.add_argument(
     help="specify GPU (cuda/cuda:0/cuda:1/...)",
 )
 parser.add_argument(
-    "--from-file",
+    "--prompt-file",
+    type=str,
+    help="if specified, load prompts from this file",
+)
+parser.add_argument(
+    "--nprompt-file",
     type=str,
     help="if specified, load prompts from this file",
 )
@@ -252,20 +257,33 @@ if opt.fixed_code:
 
 batch_size = opt.n_samples
 n_rows = opt.n_rows if opt.n_rows > 0 else batch_size
-if not opt.from_file:
+if not opt.prompt_file:
     assert opt.prompt is not None
     prompt = opt.prompt
     print(f"Using prompt: {prompt}")
     data = [batch_size * [prompt]]
 
 else:
-    print(f"reading prompts from {opt.from_file}")
-    with open(opt.from_file, "r") as f:
+    print(f"reading prompts from {opt.prompt_file}")
+    with open(opt.prompt_file, "r") as f:
         text = f.read()
         print(f"Using prompt: {text.strip()}")
         data = text.splitlines()
         data = batch_size * list(data)
         data = list(chunk(sorted(data), batch_size))
+
+if not opt.nprompt_file:
+    assert opt.nprompt is not None
+    nprompt = opt.nprompt
+    print(f"Using nprompt: {nprompt}")
+
+else:
+    print(f"reading prompts from {opt.nprompt_file}")
+    with open(opt.nprompt_file, "r") as f:
+        text = f.read()
+        print(f"Using nprompt: {text.strip()}")
+        nprompt = text
+
 
 
 if opt.precision == "autocast" and opt.device != "cpu":
@@ -288,8 +306,11 @@ with torch.no_grad():
             with precision_scope("cuda"):
                 modelCS.to(opt.device)
                 uc = None
-                if opt.scale != 1.0:
+                if nprompt:
+                    uc = modelCS.get_learned_conditioning(batch_size * nprompt)
+                else:
                     uc = modelCS.get_learned_conditioning(batch_size * [""])
+
                 if isinstance(prompts, tuple):
                     prompts = list(prompts)
 
