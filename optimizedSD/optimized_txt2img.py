@@ -18,6 +18,8 @@ from transformers import logging
 # from samplers import CompVisDenoiser
 logging.set_verbosity_error()
 
+import datetime
+date1 = datetime.datetime.today().strftime("%Y-%m-%d")
 
 def chunk(it, size):
     it = iter(it)
@@ -39,9 +41,24 @@ DEFAULT_CKPT = "models/ldm/stable-diffusion-v1/model.ckpt"
 parser = argparse.ArgumentParser()
 
 parser.add_argument(
-    "--prompt", type=str, nargs="?", default="a painting of a virus monster playing guitar", help="the prompt to render"
+    "--prompt",
+    type=str,
+    nargs="?",
+    default="a painting of a virus monster playing guitar",
+    help="the prompt to render"
 )
-parser.add_argument("--outdir", type=str, nargs="?", help="dir to write results to", default="outputs/txt2img-samples")
+parser.add_argument(
+    "--nprompt",
+    type=str,
+    default="",
+    help="negative prompt to render"
+)
+parser.add_argument("--outdir",
+    type=str,
+    nargs="?",
+    help="dir to write results to",
+    default="outputs/txt2img-samples"
+)
 parser.add_argument(
     "--skip_grid",
     action="store_true",
@@ -263,7 +280,8 @@ with torch.no_grad():
     for n in trange(opt.n_iter, desc="Sampling"):
         for prompts in tqdm(data, desc="data"):
 
-            sample_path = os.path.join(outpath, "_".join(re.split(":| ", prompts[0])))[:150]
+            sample_path = os.path.join(outpath, date1)[:150]
+            #sample_path = os.path.join(outpath, "_".join(re.split(":| ", prompts[0])))[:150]
             os.makedirs(sample_path, exist_ok=True)
             base_count = len(os.listdir(sample_path))
 
@@ -277,7 +295,7 @@ with torch.no_grad():
 
                 subprompts, weights = split_weighted_subprompts(prompts[0])
                 if len(subprompts) > 1:
-                    c = torch.zeros_like(uc)
+                    #c = torch.zeros_like(uc)
                     totalWeight = sum(weights)
                     # normalize each "sub prompt" and add it
                     for i in range(len(subprompts)):
@@ -309,7 +327,9 @@ with torch.no_grad():
                     sampler = opt.sampler,
                 )
 
-                modelFS.to(opt.device)
+                #modelFS.to(opt.device)
+                modelFS.to("cpu")
+                samples_ddim = samples_ddim.to("cpu")
 
                 print(samples_ddim.shape)
                 print("saving images")
@@ -325,11 +345,11 @@ with torch.no_grad():
                     opt.seed += 1
                     base_count += 1
 
-                if opt.device != "cpu":
-                    mem = torch.cuda.memory_allocated() / 1e6
-                    modelFS.to("cpu")
-                    while torch.cuda.memory_allocated() / 1e6 >= mem:
-                        time.sleep(1)
+                #if opt.device != "cpu":
+                #    mem = torch.cuda.memory_allocated() / 1e6
+                #    modelFS.to("cpu")
+                #    while torch.cuda.memory_allocated() / 1e6 >= mem:
+                #        time.sleep(1)
                 del samples_ddim
                 print("memory_final = ", torch.cuda.memory_allocated() / 1e6)
 
